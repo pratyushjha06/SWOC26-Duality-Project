@@ -7,6 +7,8 @@ This document summarizes a series of **model‑focused**, **data‑focused**, an
 - Training‑focused: Optimization, loss functions, and batch size.
 - Final model: Consolidated UNet configuration and evaluation.
 
+Drive Link: https://drive.google.com/drive/folders/12ZGMumDkAF3UxvzZ4jnw8tFKKtnU2-TK
+
 ---
 
 ## 1. Baseline Model and Dataset
@@ -981,5 +983,3 @@ Using the separate evaluation notebook, the final UNet checkpoint `best_model_fi
 These results confirm that the final UNet with CE+Dice loss, ColorJitter augmentation, LR = 1e‑4, and batch size 4 significantly outperforms the earlier baselines and intermediate experiments, both in overlap‑based metrics (IoU/Dice) and overall pixel accuracy.
 
 ---
-
-

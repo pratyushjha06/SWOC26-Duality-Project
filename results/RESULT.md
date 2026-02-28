@@ -4,8 +4,8 @@
 
 All qualitative results, model checkpoints, and visualizations:
 
- Google Drive:  
-https://drive.google.com/drive/folders/1M8hoq3mhfo9STr3yV1Z9hDuRl_nQ2nyS
+ Google Drive: https://drive.google.com/drive/folders/1M8hoq3mhfo9STr3yV1Z9hDuRl_nQ2nyS
+
 
 ---
 
