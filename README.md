@@ -1,95 +1,213 @@
-# Off‑Road Semantic Segmentation – Documentation Index
+# Off‑Road Semantic Segmentation (SWOC26 – Duality AI)
 
-Central index for all documentation and experiments in this repository.
+Pixel‑wise segmentation of synthetic off‑road desert scenes into 10 terrain / object classes using a UNet‑based pipeline and a bunch of controlled experiments (models, data, and training tricks).
 
----
-
-## 1. High‑Level README
-
-For a quick overview of the project, goals, repo structure, and how to run the final UNet:
-
-- `README.md`
-
-This is the main entry point for anyone landing on the repo.
+> Repo: [GitHub - pratyushjha06/SWOC26-Duality-Project](https://github.com/pratyushjha06/SWOC26-Duality-Project)  
+> Full experiments / notebooks / heavy artifacts (Drive): https://drive.google.com/drive/folders/1am0BU9onk4TCyApVagrpZL9uXfL8TTYb
 
 ---
 
-## 2. Model Experiments
+## 1. Problem
 
-Detailed descriptions, configs, and metrics for all **model‑focused, data‑focused, and training‑focused** experiments:
+Given an RGB image from a synthetic desert environment, predict a semantic label for **every pixel** from the following 10 classes:
 
-- `models/models.md`
+> Trees, Lush Bushes, Dry Grass, Dry Bushes, Ground Clutter, Flowers, Logs, Rocks, Landscape, Sky
 
-This file covers:
+The dataset is highly imbalanced (Landscape / Sky dominate; Logs / Flowers / Rocks are rare), so a lot of the work is about **making the model not ignore the rare stuff**.
 
-- DINOv2 + ConvNeXt baseline  
-- UNet, DeepLabV3, SegNet  
-- Data‑augmentation experiments (Exp_001–Exp_004)  
-- Training ablations (learning rate, optimizer, loss, batch size, class weights)
-
----
-
-## 3. Technical Report
-
-For a narrative, paper‑style explanation of the final approach:
+If you want the full story (motivation, dataset, challenges, final numbers), read:
 
 - `Report.md`
 
-Contents:
+---
 
-- Problem statement and dataset description  
-- Preprocessing and augmentation pipeline  
-- Final UNet architecture and training strategy  
-- Quantitative results and qualitative discussion  
-- Challenges, solutions, and future work
+## 2. Repository Layout
+
+High‑level structure of this repo:
+
+```text
+SWOC26-Duality-Project/
+├── data/                  # (not tracked) Train / Val / Test
+├── scripts/
+│   ├── dataset.py         # MaskDataset + transforms + ID→class mapping
+│   ├── train_segmentation.py
+│   ├── train_final.py     # final UNet training entrypoint
+│   ├── test_segmentation.py
+│   └── visualize.py       # quick visualizations
+├── models/
+│   ├── models.md          # ALL model/data/training experiments (UNet, DeepLab, etc.)
+│   └── .gitkeep
+├── results/
+│   ├── baseline/          # baseline masks, visualizations, per-class metrics
+│   ├── final_model/       # best_cases, failures, metrics.json, class_iou.json
+│   └── .gitkeep
+|   └── RESULT.md
+├── Report.md              # technical report (problem → final model)
+└── README.md              # you are here
+```
+
+Detailed descriptions of **every experiment** (all models, data aug, loss functions, LRs, batch sizes) live in:
+
+- `models/models.md`
+
+I’m not repeating that content here on purpose.
 
 ---
 
-## 4. Code & Scripts
+## 3. Setup
 
-Implementation entry points:
+### 3.1 Environment
 
-- `scripts/dataset.py` – dataset + transforms  
-- `scripts/train_final_unet.py` – train final model  
-- `scripts/eval_final_unet.py` – evaluate + save metrics/visualizations  
-- Additional helper scripts live in the same folder.
+```bash
+git clone https://github.com/pratyushjha06/SWOC26-Duality-Project.git
+cd SWOC26-Duality-Project
 
----
+python -m venv .venv
+# Windows
+.venv\Scripts\activate
+# Linux / macOS
+source .venv/bin/activate
 
-## 5. Experiments & Results
+pip install -r requirements.txt
+```
 
-Local result folders (lightweight artifacts):
+Core deps: `torch`, `torchvision`, `albumentations`, `numpy`, `tqdm`, `matplotlib`.
 
-- `results/baseline/` – early baselines, masks, per‑class metrics, visualizations  
-- `results/final_model/` – best_cases, failures, `metrics.json`, `class_iou.json`
+### 3.2 Data Placement
 
-Full notebooks, checkpoints, histories, and visualizations are stored in the shared Drive:
+Expected layout:
 
-- **Main Drive folder:**  
-  `https://drive.google.com/drive/folders/1am0BU9onk4TCyApVagrpZL9uXfL8TTYb`
+```text
+data/
+  Train/
+    Color_Images/
+    Segmentation/
+  Val/
+    Color_Images/
+    Segmentation/
+  Test/
+    Color_Images/
+```
 
----
-
-## 6. Notebooks
-
-Exploratory and experiment notebooks (for reproducibility):
-
-- `notebooks/ModelExp1_UNet.ipynb`  
-- `notebooks/Exp_002_Brightness_Contrast.ipynb`  
-- `notebooks/T1_-Learning-Rate.ipynb`  
-- `notebooks/T2_-Optimization.ipynb`  
-- `notebooks/T3_-Loss-functions.ipynb`  
-- `notebooks/T3_B_WeightedCE_Dice.ipynb`  
-- `notebooks/T4_-Batch-size.ipynb`  
-- `notebooks/Final_UNet_Training.ipynb`
-
-Use these to re‑run or extend individual experiments.
+Update paths in the scripts if your structure is slightly different (check `scripts/dataset.py`).
 
 ---
 
-## 7. Quick Pointers
+## 4. How to Run
 
-- Want **just the final model**? See `models/final_unet/` and `results/final_model/`.  
-- Want **all experiment details**? Read `models/models.md`.  
-- Want a **short narrative for reports/hackathons**? Use `Report.md`.  
-- Want to **run code**? Start from `README.md` and the scripts in `scripts/`.
+### 4.1 Train a Baseline UNet
+
+This uses the “baseline” config (simpler training, no fancy loss) that matches your early experiments.
+
+```bash
+python scripts/train_segmentation.py \
+  --train-dir data/Train \
+  --val-dir data/Val \
+  --save-dir results/baseline
+```
+
+Outputs (inside `results/baseline/`):
+
+- `masks/` – predicted masks
+- `masks_color/` – colorized predictions
+- `visualizations/` – side‑by‑side input / GT / prediction
+- `evaluation_metrics` (json/txt)
+- `per_class_metrics` (plots)
+
+### 4.2 Train the Final UNet
+
+This uses the best configuration found through all the T1/T2/T3/T5 experiments (LR, optimizer, loss, batch size, aug). The exact settings are documented in `models/models.md` and `Report.md`, but you don’t need to read them to run this.
+
+```bash
+python scripts/train_final.py \
+  --train-dir data/Train \
+  --val-dir data/Val \
+  --save-dir results/final_model
+```
+
+Checkpoints are saved into `results/final_model` (or `models/final_unet` if you point `--save-dir` there).
+
+### 4.3 Evaluate a Trained Model
+
+```bash
+python scripts/test_segmentation.py \
+  --checkpoint path/to/best_model.pth \
+  --val-dir data/Val \
+  --save-dir results/final_model
+```
+
+You’ll get:
+
+- `metrics.json` – overall mIoU, Dice, pixel accuracy, timing
+- `class_iou.json` – per‑class IoU
+- `best_cases/` – examples where the model crushed it
+- `failures/` – examples where it messed up
+
+`visualize.py` is for quick qualitative checks during development.
+
+---
+
+## 5. What’s Inside the Experiments (Pointer Only)
+
+All the heavy experimentation is already written in **one place**:
+
+- `models/models.md`
+
+That file contains:
+
+- Model baselines: DINOv2 + ConvNeXt head, UNet, DeepLabV3, SegNet
+- Data‑focused experiments:
+  - Albumentations geometric aug
+  - Brightness/contrast ColorJitter
+  - Strong appearance aug
+  - Geometric‑only aug
+- Training‑focused experiments:
+  - Learning‑rate sweep (T1)
+  - Optimizer comparison (Adam, SGD, AdamW) (T2)
+  - Loss functions (CE, CE+Dice, Focal, Weighted CE+Dice) (T3, T3_B)
+  - Batch size sweep (2, 4, 8) (T5)
+- Final model configuration + metrics
+
+If someone wants **numbers, plots, or ablation details**, they go there instead of scrolling through a monster README.
+
+For a narrative / report style view (for evaluation or hackathon submission), use:
+
+- `Report.md`
+
+---
+
+## 6. Final Model (TL;DR)
+
+What we actually ended up using:
+
+- **Architecture:** UNet (3‑channel input, 10‑class output)
+- **Augmentation:** brightness/contrast jitter + light geometric transforms
+- **Optimizer:** Adam, LR 1e‑4
+- **Loss:** Weighted Cross‑Entropy + Dice
+- **Batch size:** 4
+- **Selection:** best validation mean IoU
+
+Validation set (317 images):
+
+- Mean IoU ≈ **0.61**
+- Dice Score ≈ **0.72**
+- Pixel Accuracy ≈ **0.89**
+- Inference ≈ **2.2 ms / image** on a T4‑class GPU
+
+Exact numbers + per‑class breakdown are in `results/final_model/metrics.json` and `class_iou.json`, as well as `Report.md`.
+
+---
+
+## 7. Extra Stuff
+
+- All raw experiment notebooks + every single result (per‑experiment folders, visualizations, checkpoints) live in the Drive: `https://drive.google.com/drive/folders/1am0BU9onk4TCyApVagrpZL9uXfL8TTYb`
+- `Experiment_Tracker.xlsx` has a spreadsheet‑style log of runs and metrics.
+
+---
+
+## 8. Acknowledgements
+
+- Duality AI & SWOC26 organizers for the dataset and challenge.
+- PyTorch, Albumentations, and the wider OSS community.
+
+If you want to plug in a new model or loss, open a PR or fork this and go wild.
